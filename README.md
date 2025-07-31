@@ -1,6 +1,7 @@
 ﻿# ReClass.NET PCSX2 Plugin
 
 A plugin for [ReClass.NET](https://github.com/ReClassNET/ReClass.NET) that adds support for custom pointer resolution in PCSX2 (PlayStation 2 Emulator). This allows EE (Emotion Engine) memory addresses to be resolved and dereferenced within the ReClass.NET interface.
+Special thanks to KN4CK3R for creating ReClass and pentoxine for the initial [Frostbite plugin](https://github.com/ReClassNET/ReClass.NET-FrostbitePlugin) which inspired this project.
 
 ## 📦 Features
 - Custom pointer node `PCSX2PtrNode` that handles EE virtual memory translation.
