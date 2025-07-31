@@ -20,7 +20,7 @@ namespace PCSX2Plugin
 
         public override void GetUserInterfaceInfo(out string name, out Image icon)
         {
-            name = "EEMem";
+            name = "Get EEMem Address";
             icon = Properties.Resources.logo_pcsx2;
         }
 
@@ -72,11 +72,11 @@ namespace PCSX2Plugin
                 IntPtr addr = (IntPtr)(ptr + Offset);
                 memory.Size = InnerNode.MemorySize;
                 memory.UpdateFrom(context.Process, addr);
-            
+
                 DrawContext v = context.Clone();
                 v.Address = addr;
                 v.Memory = memory;
-            
+
                 var innerSize = InnerNode.Draw(v, tx, y);
             
                 size.Width = Math.Max(size.Width, innerSize.Width + tx - origX);
@@ -127,9 +127,7 @@ namespace PCSX2Plugin
 		public override Size Draw(DrawContext context, int x, int y)
 		{
 			if (IsHidden && !IsWrapped)
-			{
 				return DrawHidden(context, x, y);
-			}
 
 			var origX = x;
 			var origY = y;
@@ -163,17 +161,13 @@ namespace PCSX2Plugin
 
 			if (LevelsOpen[context.Level])
 			{
-				//var ptr = context.Memory.ReadIntPtr(Offset);
-
 				IntPtr addr = context.Address + Offset;
 				if (!addr.IsNull())
 				{
                     long address = 0;
                     var _uint = context.Process.ReadRemoteUInt32(addr);
                     if (!addr.IsNull() && PS2Helpers.GetEEMem(context, ref address))
-                    {
                         addr = (IntPtr)(address + _uint);
-                    }
                 }
 
 				memory.Size = InnerNode.MemorySize;
@@ -184,7 +178,6 @@ namespace PCSX2Plugin
 				v.Memory = memory;
 
 				var innerSize = InnerNode.Draw(v, tx, y);
-
 				size.Width = Math.Max(size.Width, innerSize.Width + tx - origX);
 				size.Height += innerSize.Height;
 			}
@@ -210,7 +203,6 @@ namespace PCSX2Plugin
 
     public class PS2Helpers
     {
-
         /// IMPORTS
         [Flags]
         public enum MemoryProtectionFlags : uint
