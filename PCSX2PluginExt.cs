@@ -12,9 +12,9 @@ namespace PCSX2Plugin
 		{
 			return new CustomNodeTypes
 			{
-				CodeGenerator = new PS2PtrCodeGenerator(),
-				Serializer = new PS2PtrNodeConverter(),
-				NodeTypes = new[] { typeof(EEMemNode), typeof(PS2PtrNode) }
+				CodeGenerator = new PS2CodeGenerator(),
+				Serializer = new PS2NodeSerializer(),
+				NodeTypes = new[] { typeof(EEMemNode), typeof(PS2PtrNode), typeof(ScratchpadNode), typeof(PS2ScratchPtrNode) }
 			};
 		}
 	}

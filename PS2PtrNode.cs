@@ -102,6 +102,98 @@ namespace PCSX2Plugin
         }
     }
 
+    public class ScratchpadNode : BaseClassWrapperNode
+    {
+        private readonly MemoryBuffer memory = new MemoryBuffer();
+
+        public override int MemorySize => 0x4;
+
+        protected override bool PerformCycleCheck => false;
+
+        public override void GetUserInterfaceInfo(out string name, out Image icon)
+        {
+            name = "Get Scratchpad Address";
+            icon = Properties.Resources.logo_pcsx2;
+        }
+
+        public override void Initialize()
+        {
+            var node = ClassNode.Create();
+            node.Initialize();
+            node.AddBytes(64);
+            ChangeInnerNode(node);
+        }
+
+        public override Size Draw(DrawContext context, int x, int y)
+        {
+            if (IsHidden && !IsWrapped)
+            {
+                return DrawHidden(context, x, y);
+            }
+            Name = "int Scratchpad"; //  auto generate struct name to fix any padding issues
+
+            var origX = x;
+            var origY = y;
+
+            AddSelection(context, x, y, context.Font.Height);
+
+            x = AddOpenCloseIcon(context, x, y);
+            x = AddIcon(context, x, y, context.IconProvider.Pointer, -1, HotSpotType.None);
+
+            var tx = x;
+            x = AddAddressOffset(context, x, y);
+
+            /* RENDER ROW ITEM */
+            long ptr = 0;
+            PS2Helpers.GetScratchpad(context, ref ptr);
+            x = AddText(context, x, y, context.Settings.TypeColor, HotSpot.NoneId, "Scratchpad") + context.Font.Width;
+            x = AddText(context, x, y, Color.Red, HotSpot.NoneId, " -> ");
+            x = AddText(context, x, y, context.Settings.ValueColor, HotSpot.AddressId, String.Format("0x{0:X}", ptr));
+            x += context.Font.Width;
+
+            AddComment(context, x, y);
+            DrawInvalidMemoryIndicatorIcon(context, y);
+            AddContextDropDownIcon(context, y);
+            AddDeleteIcon(context, y);
+            y += context.Font.Height;
+
+            var size = new Size(x - origX, y - origY);
+
+            if (LevelsOpen[context.Level])
+            {
+                IntPtr addr = (IntPtr)(ptr + Offset);
+                memory.Size = InnerNode.MemorySize;
+                memory.UpdateFrom(context.Process, addr);
+
+                DrawContext v = context.Clone();
+                v.Address = addr;
+                v.Memory = memory;
+
+                var innerSize = InnerNode.Draw(v, tx, y);
+
+                size.Width = Math.Max(size.Width, innerSize.Width + tx - origX);
+                size.Height += innerSize.Height;
+            }
+
+            return size;
+        }
+
+        public override int CalculateDrawnHeight(DrawContext context)
+        {
+            if (IsHidden && !IsWrapped)
+            {
+                return HiddenHeight;
+            }
+
+            var h = context.Font.Height;
+            if (LevelsOpen[context.Level])
+            {
+                h += InnerNode.CalculateDrawnHeight(context);
+            }
+            return h;
+        }
+    }
+
     public class PS2PtrNode : BaseClassWrapperNode
 	{
 		private readonly MemoryBuffer memory = new MemoryBuffer();
@@ -199,6 +291,106 @@ namespace PCSX2Plugin
 			}
 			return h;
 		}
+    }
+
+    public class PS2ScratchPtrNode : BaseClassWrapperNode
+    {
+
+        private readonly MemoryBuffer memory = new MemoryBuffer();
+
+        public override int MemorySize => 0x2;
+
+        protected override bool PerformCycleCheck => false;
+
+        public override void GetUserInterfaceInfo(out string name, out Image icon)
+        {
+            name = "PS2 Scratchpad Pointer";
+            icon = Properties.Resources.logo_pcsx2;
+        }
+
+        public override void Initialize()
+        {
+            var node = ClassNode.Create();
+            node.Initialize();
+            node.AddBytes(64);
+            ChangeInnerNode(node);
+        }
+
+        public override Size Draw(DrawContext context, int x, int y)
+        {
+            if (IsHidden && !IsWrapped)
+                return DrawHidden(context, x, y);
+
+            var origX = x;
+            var origY = y;
+
+            AddSelection(context, x, y, context.Font.Height);
+
+            x = AddOpenCloseIcon(context, x, y);
+            x = AddIcon(context, x, y, context.IconProvider.Pointer, -1, HotSpotType.None);
+
+            var tx = x;
+            x = AddAddressOffset(context, x, y);
+
+            /* RENDER ROW ITEM */
+            var ptr = context.Memory.ReadUInt16(Offset);
+            x = AddText(context, x, y, context.Settings.TypeColor, HotSpot.NoneId, "PS2ScratchpadPtr") + context.Font.Width;
+            x = AddText(context, x, y, context.Settings.NameColor, HotSpot.NameId, Name) + context.Font.Width;
+            x = AddIcon(context, x, y, context.IconProvider.Change, 4, HotSpotType.ChangeClassType);
+            x = AddText(context, x, y, Color.Red, HotSpot.NoneId, " -> ");
+            x = AddText(context, x, y, context.Settings.ValueColor, HotSpot.AddressId, String.Format("0x{0:X}", ptr));
+            x += context.Font.Width;
+
+            AddComment(context, x, y);
+
+            DrawInvalidMemoryIndicatorIcon(context, y);
+            AddContextDropDownIcon(context, y);
+            AddDeleteIcon(context, y);
+
+            y += context.Font.Height;
+
+            var size = new Size(x - origX, y - origY);
+
+            if (LevelsOpen[context.Level])
+            {
+                IntPtr addr = context.Address + Offset;
+                if (!addr.IsNull())
+                {
+                    long address = 0;
+                    var _uint = context.Process.ReadRemoteUInt16(addr);
+                    if (!addr.IsNull() && PS2Helpers.GetScratchpad(context, ref address))
+                        addr = (IntPtr)(address + _uint);
+                }
+
+                memory.Size = InnerNode.MemorySize;
+                memory.UpdateFrom(context.Process, addr);
+
+                DrawContext v = context.Clone();
+                v.Address = addr;
+                v.Memory = memory;
+
+                var innerSize = InnerNode.Draw(v, tx, y);
+                size.Width = Math.Max(size.Width, innerSize.Width + tx - origX);
+                size.Height += innerSize.Height;
+            }
+
+            return size;
+        }
+
+        public override int CalculateDrawnHeight(DrawContext context)
+        {
+            if (IsHidden && !IsWrapped)
+            {
+                return HiddenHeight;
+            }
+
+            var h = context.Font.Height;
+            if (LevelsOpen[context.Level])
+            {
+                h += InnerNode.CalculateDrawnHeight(context);
+            }
+            return h;
+        }
     }
 
     public class PS2Helpers
@@ -356,6 +548,33 @@ namespace PCSX2Plugin
             public uint Type;
         }
 
+
+        /* */
+
+        public static class PS2MemSize
+        {
+            /* inaccessible */
+            private const int MainRam = (1024 * 1024) * 32;      // 32MB
+            private const int ExtraRam = (1024 * 1024) * 96;     // 96MB
+            private const int Rom = (1024 * 1024) * 4;           // 4MB
+            private const int Rom1 = (1024 * 1024) * 4;          // 4MB
+            private const int Rom2 = (1024 * 1024) * 4;          // 4MB
+            private const int IopRam = (1024 * 1024) * 2;        // 2MB
+            private const int IopHardware = 1 * 64;              // 64KB
+            private const int Scratch = 1 * 16;                  // 16KB
+            private const int Zero = (1024 * 1) * 1;             // 1MB
+
+            /* accessible */
+            public const int MainOffset = 0;
+            public const int ExtraOffset = MainOffset + MainRam;
+            public const int ScratchOffset = ExtraOffset + ExtraRam;
+            public const int RomOffset = ScratchOffset + Scratch;
+            public const int Rom1Offset = RomOffset + Rom;
+            public const int Rom2Offset = Rom1Offset + Rom1;
+            public const int ZeroReadOffset = Rom2Offset + Rom2;
+            public const int ZeroWriteOffset = ZeroReadOffset + Zero;
+        }
+
         private static Int64 EEMem = 0;
 
         public static bool GetEEMem(DrawContext ctx, ref Int64 outBaseAddr)
@@ -458,6 +677,16 @@ namespace PCSX2Plugin
             EEMem = result;
 
             return EEMem != 0;
+        }
+
+        public static bool GetScratchpad(DrawContext ctx, ref Int64 outBaseAddr)
+        {
+            if (EEMem <= 0 && GetEEMem(ctx, ref EEMem) == false)
+                return false;
+
+            outBaseAddr = EEMem + PS2MemSize.ScratchOffset;
+
+            return outBaseAddr > EEMem;
         }
 
         //  Reads an array of members at the specified address in memory

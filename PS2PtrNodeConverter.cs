@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 using ReClassNET.DataExchange.ReClass;
 using ReClassNET.Logger;
@@ -6,42 +7,63 @@ using ReClassNET.Nodes;
 
 namespace PCSX2Plugin
 {
-	public class PS2PtrNodeConverter : ICustomNodeSerializer
+	public class PS2NodeSerializer : ICustomNodeSerializer
 	{
-		/// <summary>Name of the type used in the XML data.</summary>
-		private const string XmlType = "PCSX2::PS2Ptr";
+        /// <summary>
+        /// Map node types to their XML identifiers.
+        /// </summary>
+        private static readonly Dictionary<Type, string> NodeTypeToXml = new Dictionary<Type, string>
+        {
+            { typeof(PS2PtrNode), "PCSX2::PS2Ptr" },
+            { typeof(PS2ScratchPtrNode), "PCSX2::PS2ScratchPtr" }
+        };
 
-		/// <summary>Checks if the node can be handled.</summary>
-		/// <param name="node">The node to check.</param>
-		/// <returns>True if we can handle the node, false if not.</returns>
-		public bool CanHandleNode(BaseNode node) => node is PS2PtrNode;
+        /// <summary>
+        /// Reverse lookup for XML identifiers -> node factory.
+        /// </summary>
+        private static readonly Dictionary<string, Func<BaseNode>> XmlToNode = new Dictionary<string, Func<BaseNode>>
+        {
+            { "PCSX2::PS2Ptr", () => new PS2PtrNode() },
+            { "PCSX2::PS2ScratchPtr", () => new PS2ScratchPtrNode() }
+        };
 
-		/// <summary>Checks if the element can be handled.</summary>
-		/// <param name="element">The element to check.</param>
-		/// <returns>True if we can read node, false if not.</returns>
-		public bool CanHandleElement(XElement element) => element.Attribute(ReClassNetFile.XmlTypeAttribute)?.Value == XmlType;
+        /// <summary>Checks if the node can be handled.</summary>
+        public bool CanHandleNode(BaseNode node) => NodeTypeToXml.ContainsKey(node.GetType());
 
-		/// <summary>Creates a node from the xml element. This method gets only called if <see cref="CanHandleElement(XElement)"/> returned true.</summary>
-		/// <param name="element">The element to create the node from.</param>
-		/// <param name="parent">The parent of the node.</param>
-		/// <param name="classes">The list of classes which correspond to the node.</param>
-		/// <param name="logger">The logger used to output messages.</param>
-		/// <returns>True if a node was created, otherwise false.</returns>
-		public BaseNode CreateNodeFromElement(XElement element, BaseNode parent, IEnumerable<ClassNode> classes, ILogger logger, CreateNodeFromElementHandler defaultHandler)
-		{
-			return new PS2PtrNode();
-		}
+        /// <summary>Checks if the element can be handled.</summary>
+        public bool CanHandleElement(XElement element)
+        {
+            var xmlType = element.Attribute(ReClassNetFile.XmlTypeAttribute)?.Value;
+            return !string.IsNullOrEmpty(xmlType) && XmlToNode.ContainsKey(xmlType);
+        }
 
-		/// <summary>Creates a xml element from the node. This method gets only called if <see cref="CanHandleNode(BaseNode)"/> returned true.</summary>
-		/// <param name="node">The node to create the xml element from.</param>
-		/// <param name="logger">The logger used to output messages.</param>
-		/// <returns>The xml element for the node.</returns>
-		public XElement CreateElementFromNode(BaseNode node, ILogger logger, CreateElementFromNodeHandler defaultHandler)
-		{
-			return new XElement(
-				ReClassNetFile.XmlNodeElement,
-				new XAttribute(ReClassNetFile.XmlTypeAttribute, XmlType)
-			);
-		}
-	}
+        /// <summary>Creates a node from the xml element.</summary>
+        public BaseNode CreateNodeFromElement( XElement element, BaseNode parent, IEnumerable<ClassNode> classes, ILogger logger, CreateNodeFromElementHandler defaultHandler )
+        {
+            var xmlType = element.Attribute(ReClassNetFile.XmlTypeAttribute)?.Value;
+
+            if (xmlType != null && XmlToNode.TryGetValue(xmlType, out var factory))
+            {
+                return factory();
+            }
+
+            logger.Log(LogLevel.Error, $"Unknown PS2 node type: {xmlType}");
+            return null;
+        }
+
+        /// <summary>Creates a xml element from the node.</summary>
+        public XElement CreateElementFromNode( BaseNode node, ILogger logger, CreateElementFromNodeHandler defaultHandler )
+        {
+            if (NodeTypeToXml.TryGetValue(node.GetType(), out var xmlType))
+            {
+                return new XElement(
+                    ReClassNetFile.XmlNodeElement,
+                    new XAttribute(ReClassNetFile.XmlTypeAttribute, xmlType)
+                );
+            }
+
+            logger.Log(LogLevel.Error, $"Unhandled PS2 node type: {node.GetType().Name}");
+            return null;
+        }
+    }
 }
