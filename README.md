@@ -35,8 +35,8 @@ If you want to compile the ReClass.NET PCSX2 Plugin just fork the repository and
 ```
 ..\ReClass.NET\
 ..\ReClass.NET\ReClass.NET\ReClass.NET.csproj
-..\ReClass.NET-FrostbitePlugin
-..\ReClass.NET-FrostbitePlugin\FrostbitePlugin.csproj
+..\ReClass.NET-PCSX2Plugin
+..\ReClass.NET-PCSX2Plugin\PCSX2Plugin.csproj
 ```
 
 ## 📜 License
